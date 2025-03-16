@@ -111,6 +111,42 @@ def getFile():
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
     files = [os.path.join(cache_dir, file) for file in result.stdout.splitlines()]
 
+    newIndex = -1
+    for index, file in enumerate(files):
+        if "tmp" in file:
+           newIndex = index
+           break
+
+        # Se è stato trovato un file con "tmp", rimuovilo dall'array
+    if newIndex != -1:
+        files.pop(newIndex)
+
+        # Aggiungi tutti i file dalla directory "tmp" (se esiste)
+        tmp_dir = os.path.join(cache_dir, "tmp")
+        if os.path.exists(tmp_dir) and os.path.isdir(tmp_dir):
+            # Ottieni tutti i file nella directory "tmp" con la loro data di modifica
+            tmp_files = [
+                (os.path.join(tmp_dir, f), os.path.getmtime(os.path.join(tmp_dir, f)))
+                for f in os.listdir(tmp_dir)
+                if os.path.isfile(os.path.join(tmp_dir, f))
+            ]
+
+            # Ordina i file di "tmp" in base alla data di modifica (dal più recente al più vecchio)
+            tmp_files.sort(key=lambda x: x[1], reverse=True)
+
+            # Aggiungi i file di "tmp" all'array `files` con le loro date di modifica
+            files_with_mtime = [
+                (file, os.path.getmtime(file)) for file in files
+            ]
+            files_with_mtime.extend(tmp_files)
+
+            # Ordina l'array combinato in base alla data di modifica
+            files_with_mtime.sort(key=lambda x: x[1], reverse=True)
+
+            # Estrai solo i percorsi dei file (senza la data di modifica)
+            files = [file[0] for file in files_with_mtime]
+
+
     # Analizza ogni file
     for file in files:
         if (found := cercaNome(file)) is not None:
