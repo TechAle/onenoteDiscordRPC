@@ -1,6 +1,8 @@
+import json
 import os
 import glob
 import time
+from urllib.parse import unquote
 
 import tool
 
@@ -73,13 +75,20 @@ def cercaNome(file_path) -> str | None:
             position += len(block)
 
 
-# Directory da controllare
-search_dir =  os.path.expanduser("~") + "/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application Support/Microsoft User Data/OneNote/15.0/cache/"
+def getCartella():
+    with open(data_dir, 'r') as file:
+        data = json.load(file)
 
-# Trova tutti i file nella directory
+    # Trova l'URL con il LastAccessedAt più recente
+    latest_entry = max(data["ResourceInfoCache"], key=lambda x: x["LastAccessedAt"])
+    return unquote(latest_entry["Url"].split("/")[-2])
+
+
 lastFile = None
-while True:
-    files = list(filter(os.path.isfile, glob.glob(os.path.join(search_dir, "*"))))
+
+
+def getFile(lastFile):
+    files = list(filter(os.path.isfile, glob.glob(os.path.join(cache_dir, "*"))))
     files.sort(key=lambda x: os.path.getmtime(x))
 
     # Prendi gli ultimi 5 file (escludendo l'ultimo) e inverti l'ordine
@@ -88,40 +97,22 @@ while True:
     # Analizza ogni file
     for file in files:
         if (found := cercaNome(file)) is not None:
-            if found != lastFile:
-                print(found)
-            lastFile = found
-            break
+            return found
+
+
+# Directory da controllare
+cache_dir = os.path.expanduser("~") + ("/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application "
+                                       "Support/Microsoft User Data/OneNote/15.0/cache/")
+data_dir = os.path.expanduser("~") + ("/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application "
+                                      "Support/Microsoft/Office/16.0/ResourceInfoCache/data.json")
+
+# Trova tutti i file nella directory
+while True:
+    cartella = getCartella()
+    file = getFile(lastFile)
+    if file != lastFile:
+        print(f"Cartella: {cartella}")
+        print(f"File: {file}")
+        lastFile = file
 
     time.sleep(1)
-
-# 000006V3.bin
-'''
-    000006V3.bin
-    Questo file contiene il database di onenote
-    E' un semplice "id-corrente"
-    Idea: prendo l'id più alto/grande
-        NotebookUrl è il modo per trovare il padre più alto
-    E poi vado ricorsivamente in basso, creando una struttura ad albero
-    
-    Documents_en-IT
-    Questo contiene i notebook ben formattati
-'''
-
-'''
-    001C0DC1 8C521004 01000000 0F000000
-    001CDD34 0088982C 54501004 01000000 0A000000
-    001CBACA D0541004 01000000 1D000000
-    001CDD34 0088F049 433D0904 01000000 0E000000
-    001CC81C 001CFFC8 6D491004 01000000 18000000
-    001CB2E7 02551004 01000000 02000000
-    
-    
-    
-    {75AAD487-052E-3E4A-A805-CFADD19B35EC}{59}
-    {75AAD487-052E-3E4A-A805-CFADD19B35EC}{65}
-    
-    Idea:
-    Vado nella cache, estraggo il nome, cerco il nome nel database, 
-    Cerco il padre ricorsivamente, così creo il path
-'''
