@@ -1,13 +1,23 @@
+import heapq
 import json
 import os
 import glob
 import sqlite3
+import subprocess
+import threading
 import time
 from urllib.parse import unquote
 
 import tool
+from discordRPC import DiscordRPC
 
-sequenzaInizio = b'\x1c'
+
+def processExists(name="OneNote.app") -> bool:
+    for process in os.popen('ps aux'):
+        if process.__contains__(name):
+            return True
+    return False
+
 
 def cercaNome(file_path) -> str | None:
     """
@@ -95,16 +105,17 @@ lastFile = None
 
 
 def getFile():
-    files = list(filter(os.path.isfile, glob.glob(os.path.join(cache_dir, "*"))))
-    files.sort(key=lambda x: os.path.getmtime(x))
-
-    # Prendi gli ultimi 5 file (escludendo l'ultimo) e inverti l'ordine
-    files = files[::-1]
+    # Esegui il comando shell per ottenere i 15 file più recenti
+    # Aggiungi virgolette al percorso per gestire spazi e caratteri speciali
+    command = f'ls -lt "{cache_dir}" | awk \'NR>1 {{print $9}}\' | head -15'
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    files = [os.path.join(cache_dir, file) for file in result.stdout.splitlines()]
 
     # Analizza ogni file
     for file in files:
         if (found := cercaNome(file)) is not None:
             return found
+
 
 def getPath(cartella, file):
     allDicts = tool.getFiles(".db", dom_dir)
@@ -149,6 +160,47 @@ def getPath(cartella, file):
         return [cartella, file]
 
 
+discord = None
+
+
+def openDiscord():
+    global discord
+    discord = DiscordRPC("1084765396344782868", threading.current_thread())
+    discord.start_rpc()
+    discord.modify_presence(
+        state="...",
+        details="Caricamento...",
+        large_image="pic",
+        large_text="Made with tears",
+        start=time.time(),  # Timestamp di inizio
+        buttons=[{"label": "Github", "url": "https://github.com/TechAle/onenoteDiscordRPC"}]
+    )
+
+
+def closeDiscord():
+    if type(discord) == DiscordRPC:
+        # noinspection PyUnresolvedReferences
+        discord.close_rpc()
+
+
+openedBefore = False
+
+
+def checkOneNote():
+    global openedBefore
+    if not processExists():
+        if openedBefore:
+            closeDiscord()
+            print("OneNote è stato chiuso.")
+            openedBefore = False
+        return False
+    if not openedBefore:
+        openDiscord()
+        print("OneNote è stato aperto.")
+        openedBefore = True
+    return True
+
+
 # Directory da controllare
 cache_dir = os.path.expanduser("~") + ("/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application "
                                        "Support/Microsoft User Data/OneNote/15.0/cache/")
@@ -157,23 +209,20 @@ data_dir = os.path.expanduser("~") + ("/Library/Containers/com.microsoft.onenote
 dom_dir = os.path.expanduser("~/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application "
                              "Support/Microsoft User Data/OneNote/15.0/FullTextSearchIndex/")
 
-
 # Trova tutti i file nella directory
 while True:
+    if not checkOneNote():
+        time.sleep(1)
+        continue
     cartella = getCartella()
     file = getFile()
     if file != lastFile:
         cartella = getPath(cartella, file)
         lastFile = file
         print(f"Cartella: {cartella}")
+        # noinspection PyUnresolvedReferences
+        discord.modify_presence(
+            state='/'.join(cartella[:-1]),
+            details='Scrivendo ' + cartella[-1],
+        )
     time.sleep(1)
-
-'''
-    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C FDDC4352 10040100 00001A00 0000
-
-    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C 0B1A4D52 10040100 00000900 0000
-    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C 57EC1653 10040100 00000A00 0000
-    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C DD340088 97D5334F 00000C00 0000
-    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C 6CC00154 10040100 00000600 0000
-    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C DD340088 E05BBC4A 00002800 0000
-'''
