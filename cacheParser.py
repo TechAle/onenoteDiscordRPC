@@ -87,7 +87,7 @@ def getCartella():
 lastFile = None
 
 
-def getFile(lastFile):
+def getFile():
     files = list(filter(os.path.isfile, glob.glob(os.path.join(cache_dir, "*"))))
     files.sort(key=lambda x: os.path.getmtime(x))
 
@@ -99,20 +99,23 @@ def getFile(lastFile):
         if (found := cercaNome(file)) is not None:
             return found
 
+def getPath(cartella, file):
+    pass
+
 
 # Directory da controllare
 cache_dir = os.path.expanduser("~") + ("/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application "
                                        "Support/Microsoft User Data/OneNote/15.0/cache/")
 data_dir = os.path.expanduser("~") + ("/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application "
                                       "Support/Microsoft/Office/16.0/ResourceInfoCache/data.json")
+dom_dir = os.path.expanduser("~") + ("/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application\ "
+                                     "Support/Microsoft\ User\ Data/OneNote/15.0/FullTextSearchIndex/")
 
 # Trova tutti i file nella directory
 while True:
     cartella = getCartella()
-    file = getFile(lastFile)
+    file = getFile()
     if file != lastFile:
-        print(f"Cartella: {cartella}")
-        print(f"File: {file}")
-        lastFile = file
+        cartella = getPath(cartella, file)
 
     time.sleep(1)

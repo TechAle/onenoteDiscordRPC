@@ -1,3 +1,7 @@
+import os
+from pathlib import Path
+
+
 def hex_string_to_bytes(hex_string, format_output='bytes'):
     # Dividi la stringa in una lista di valori esadecimali
     hex_values = hex_string.split()
@@ -17,8 +21,15 @@ def hex_string_to_bytes(hex_string, format_output='bytes'):
     else:
         raise ValueError("format_output deve essere 'bytes', 'hex', o 'escaped'.")
 
+
 def is_printable_ascii(byte):
     return 32 <= byte <= 126
 
+
 def byteExists(byte, buffer):
     return buffer.find(byte) != -1
+
+
+def getFiles(extension, directory, sortDate=False):
+    files = [f for f in Path(directory).iterdir() if f.suffix == extension]
+    return max(files, key=lambda x: x.stat().st_mtime) if sortDate else files
