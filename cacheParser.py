@@ -1,6 +1,7 @@
 import json
 import os
 import glob
+import sqlite3
 import time
 from urllib.parse import unquote
 
@@ -75,6 +76,12 @@ def cercaNome(file_path) -> str | None:
             position += len(block)
 
 
+'''
+    Questo commento serve come preghiera per tutte le lacrime che il programmatore, io, ho versato
+    per via di questo codice. Che sia benedetto e che non debba mai più essere modificato.
+    Un messaggio per gli sviluppatori di OneNote: vi prego, create un'API. Vi prego, non create incosistenze.
+    VI PREGO, NON FATEMI PIANGERE DINUOVO.
+'''
 def getCartella():
     with open(data_dir, 'r') as file:
         data = json.load(file)
@@ -100,7 +107,44 @@ def getFile():
             return found
 
 def getPath(cartella, file):
-    pass
+    allDicts = tool.getFiles(".db", dom_dir)
+    checkDb = None
+    for currentDict in allDicts:
+        conn = sqlite3.connect(str(currentDict.absolute()))
+        c = conn.cursor()
+        c.execute("SELECT Title FROM `Entities` WHERE `Type` = 4;")
+        if (name := c.fetchone()) is not None and name[0] == cartella:
+            checkDb = currentDict
+            break
+        conn.close()
+
+    dbFile = None
+    if checkDb is not None:
+        allItems = c.execute("SELECT * FROM 'Entities' WHERE Type = 1")
+        for item in allItems.fetchall():
+            if item[13] == file:
+                dbFile = item
+                break
+    if dbFile is None:
+        dbFile = c.execute(
+            "SELECT * FROM 'Entities' WHERE RecentTime != 0 AND Type = 1 ORDER BY LastModifiedTime DESC").fetchone()
+
+    if dbFile is not None:
+        parents = dbFile[5]
+        path = []
+        while True:
+            c.execute(f"SELECT * FROM 'Entities' WHERE GOID = '{parents}'")
+            parent = c.fetchone()
+            if parent is None:
+                break
+            path.append(parent[13])
+            parents = parent[5]
+        path = path[::-1]
+        c.close()
+        return path
+    else:
+        c.close()
+        return [cartella, file]
 
 
 # Directory da controllare
@@ -108,14 +152,17 @@ cache_dir = os.path.expanduser("~") + ("/Library/Containers/com.microsoft.onenot
                                        "Support/Microsoft User Data/OneNote/15.0/cache/")
 data_dir = os.path.expanduser("~") + ("/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application "
                                       "Support/Microsoft/Office/16.0/ResourceInfoCache/data.json")
-dom_dir = os.path.expanduser("~") + ("/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application\ "
-                                     "Support/Microsoft\ User\ Data/OneNote/15.0/FullTextSearchIndex/")
+dom_dir = os.path.expanduser("~/Library/Containers/com.microsoft.onenote.mac/Data/Library/Application "
+                             "Support/Microsoft User Data/OneNote/15.0/FullTextSearchIndex/")
+
 
 # Trova tutti i file nella directory
 while True:
     cartella = getCartella()
+    print(f"Cartella: {cartella}")
+    break
     file = getFile()
     if file != lastFile:
         cartella = getPath(cartella, file)
-
+        print(f"Cartella: {cartella}")
     time.sleep(1)
