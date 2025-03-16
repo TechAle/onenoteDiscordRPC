@@ -9,6 +9,41 @@ import tool
 
 sequenzaInizio = b'\x1c'
 
+def cercaCartella(file_path) -> str | None:
+    # Dimensione del blocco di lettura
+    block_size = 1024
+
+    # Verifica se il file esiste
+    if not os.path.isfile(file_path):
+        print(f"Il file {file_path} non esiste.")
+        return
+
+    # Apri il file in modalità binaria
+    with open(file_path, 'rb') as file:
+        position = 0  # Tieni traccia della posizione nel file
+        buffer = ""  # Buffer per memorizzare i dati tra i blocchi
+
+        while True:
+            # Leggi un blocco di dati
+            block = file.read(block_size).decode("utf-8", errors="ignore")
+            if not block:
+                # Fine del file raggiunta
+                break
+
+            # Aggiungi il blocco corrente al buffer
+            buffer += block
+
+            if block.__contains__("NotebookUrl"):
+                name = block[::-1].split("Name"[::-1])[0][::-1][3:]
+                return name[:name.index('"')]
+
+            # Se la sequenza non è stata trovata, controlla se potrebbe essere spezzata
+            # Mantieni solo gli ultimi (len(target_sequence) - 1) byte nel buffer
+            if len(buffer) > block_size:
+                buffer = buffer[block_size:]
+
+            # Aggiorna la posizione
+            position += len(block)
 
 def cercaNome(file_path) -> str | None:
     """
@@ -70,7 +105,8 @@ def cercaNome(file_path) -> str | None:
 
             # Se la sequenza non è stata trovata, controlla se potrebbe essere spezzata
             # Mantieni solo gli ultimi (len(target_sequence) - 1) byte nel buffer
-            buffer = buffer[block_size:]
+            if len(buffer) > block_size:
+                buffer = buffer[block_size:]
 
             # Aggiorna la posizione
             position += len(block)
@@ -83,12 +119,16 @@ def cercaNome(file_path) -> str | None:
     VI PREGO, NON FATEMI PIANGERE DINUOVO.
 '''
 def getCartella():
-    with open(data_dir, 'r') as file:
-        data = json.load(file)
+    files = list(filter(os.path.isfile, glob.glob(os.path.join(cache_dir, "*"))))
+    files.sort(key=lambda x: os.path.getmtime(x))
 
-    # Trova l'URL con il LastAccessedAt più recente
-    latest_entry = max(data["ResourceInfoCache"], key=lambda x: x["LastAccessedAt"])
-    return unquote(latest_entry["Url"].split("/")[-2])
+    # Prendi gli ultimi 5 file (escludendo l'ultimo) e inverti l'ordine
+    files = files[::-1]
+
+    # Analizza ogni file
+    for file in files:
+        if (found := cercaCartella(file)) is not None:
+            return found
 
 
 lastFile = None
@@ -99,7 +139,7 @@ def getFile():
     files.sort(key=lambda x: os.path.getmtime(x))
 
     # Prendi gli ultimi 5 file (escludendo l'ultimo) e inverti l'ordine
-    files = files[-8:-1][::-1]
+    files = files[::-1]
 
     # Analizza ogni file
     for file in files:
