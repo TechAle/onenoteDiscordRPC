@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from discordRPC import closeDiscord, openDiscord
+
 
 def hex_string_to_bytes(hex_string, format_output='bytes'):
     # Dividi la stringa in una lista di valori esadecimali
@@ -33,3 +35,20 @@ def byteExists(byte, buffer):
 def getFiles(extension, directory, sortDate=False):
     files = [f for f in Path(directory).iterdir() if f.suffix == extension]
     return max(files, key=lambda x: x.stat().st_mtime) if sortDate else files
+
+def processExists(name="OneNote.app") -> bool:
+    for process in os.popen('ps aux'):
+        if process.__contains__(name):
+            return True
+    return False
+
+def checkOneNote(openedBefore):
+    if not processExists():
+        if openedBefore:
+            closeDiscord()
+            openedBefore = False
+        return False, openedBefore
+    if not openedBefore:
+        openDiscord()
+        openedBefore = True
+    return True, openedBefore

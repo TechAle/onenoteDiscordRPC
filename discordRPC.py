@@ -1,8 +1,11 @@
 import threading
+import time
 
 from pypresence import Presence, DiscordNotFound
 
+
 class DiscordRPC:
+    discord = None
     def __init__(self, client_id: str, main_thread):
         self.client_id = client_id
         self.main_thread = main_thread
@@ -44,3 +47,24 @@ class DiscordRPC:
                 print(f"Errore durante la modifica della presenza: {e}")
         else:
             print("Errore: RPC non avviato. Chiama start_rpc() prima.")
+
+
+
+
+def openDiscord():
+    DiscordRPC.discord = DiscordRPC("1084765396344782868", threading.current_thread())
+    DiscordRPC.discord.start_rpc()
+    DiscordRPC.discord.modify_presence(
+        state="...",
+        details="Caricamento...",
+        large_image="pic",
+        large_text="Made with tears",
+        start=time.time(),  # Timestamp di inizio
+        buttons=[{"label": "Github", "url": "https://github.com/TechAle/onenoteDiscordRPC"}]
+    )
+
+
+def closeDiscord():
+    if type(DiscordRPC.discord) == DiscordRPC:
+        # noinspection PyUnresolvedReferences
+        DiscordRPC.discord.close_rpc()
