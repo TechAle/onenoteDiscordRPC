@@ -9,42 +9,6 @@ import tool
 
 sequenzaInizio = b'\x1c'
 
-def cercaCartella(file_path) -> str | None:
-    # Dimensione del blocco di lettura
-    block_size = 1024
-
-    # Verifica se il file esiste
-    if not os.path.isfile(file_path):
-        print(f"Il file {file_path} non esiste.")
-        return
-
-    # Apri il file in modalità binaria
-    with open(file_path, 'rb') as file:
-        position = 0  # Tieni traccia della posizione nel file
-        buffer = ""  # Buffer per memorizzare i dati tra i blocchi
-
-        while True:
-            # Leggi un blocco di dati
-            block = file.read(block_size).decode("utf-8", errors="ignore")
-            if not block:
-                # Fine del file raggiunta
-                break
-
-            # Aggiungi il blocco corrente al buffer
-            buffer += block
-
-            if block.__contains__("NotebookUrl"):
-                name = block[::-1].split("Name"[::-1])[0][::-1][3:]
-                return name[:name.index('"')]
-
-            # Se la sequenza non è stata trovata, controlla se potrebbe essere spezzata
-            # Mantieni solo gli ultimi (len(target_sequence) - 1) byte nel buffer
-            if len(buffer) > block_size:
-                buffer = buffer[block_size:]
-
-            # Aggiorna la posizione
-            position += len(block)
-
 def cercaNome(file_path) -> str | None:
     """
     Cerca la sequenza target_sequence nel file specificato.
@@ -101,7 +65,7 @@ def cercaNome(file_path) -> str | None:
                                 newIndex += 1
                             buffer = buffer[newIndex:]
                             buffer = buffer[:buffer.find(b"\x00")]
-                            return buffer.decode("utf-8", errors="ignore")
+                            return buffer.decode("latin-1", errors="ignore")
 
             # Se la sequenza non è stata trovata, controlla se potrebbe essere spezzata
             # Mantieni solo gli ultimi (len(target_sequence) - 1) byte nel buffer
@@ -119,16 +83,12 @@ def cercaNome(file_path) -> str | None:
     VI PREGO, NON FATEMI PIANGERE DINUOVO.
 '''
 def getCartella():
-    files = list(filter(os.path.isfile, glob.glob(os.path.join(cache_dir, "*"))))
-    files.sort(key=lambda x: os.path.getmtime(x))
+    with open(data_dir, 'r') as file:
+        data = json.load(file)
 
-    # Prendi gli ultimi 5 file (escludendo l'ultimo) e inverti l'ordine
-    files = files[::-1]
-
-    # Analizza ogni file
-    for file in files:
-        if (found := cercaCartella(file)) is not None:
-            return found
+    # Trova l'URL con il LastAccessedAt più recente
+    latest_entry = max(data["ResourceInfoCache"], key=lambda x: x["LastAccessedAt"])
+    return unquote(latest_entry["Url"].replace("%5eL", "^").split("/")[5])
 
 
 lastFile = None
@@ -168,6 +128,7 @@ def getPath(cartella, file):
     if dbFile is None:
         dbFile = c.execute(
             "SELECT * FROM 'Entities' WHERE RecentTime != 0 AND Type = 1 ORDER BY LastModifiedTime DESC").fetchone()
+        print("Rimedio")
 
     if dbFile is not None:
         parents = dbFile[5]
@@ -181,6 +142,7 @@ def getPath(cartella, file):
             parents = parent[5]
         path = path[::-1]
         c.close()
+        path.append(file)
         return path
     else:
         c.close()
@@ -199,10 +161,19 @@ dom_dir = os.path.expanduser("~/Library/Containers/com.microsoft.onenote.mac/Dat
 # Trova tutti i file nella directory
 while True:
     cartella = getCartella()
-    print(f"Cartella: {cartella}")
-    break
     file = getFile()
     if file != lastFile:
         cartella = getPath(cartella, file)
+        lastFile = file
         print(f"Cartella: {cartella}")
     time.sleep(1)
+
+'''
+    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C FDDC4352 10040100 00001A00 0000
+
+    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C 0B1A4D52 10040100 00000900 0000
+    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C 57EC1653 10040100 00000A00 0000
+    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C DD340088 97D5334F 00000C00 0000
+    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C 6CC00154 10040100 00000600 0000
+    7A1D0014 2C340020 B41C0088 FE1C0010 131E0024 9834001C DD340088 E05BBC4A 00002800 0000
+'''
