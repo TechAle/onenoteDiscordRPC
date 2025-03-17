@@ -27,6 +27,7 @@ class DiscordRPC:
             if not self.main_thread.is_alive():
                 self.close_rpc()
                 break
+            time.sleep(30)
 
     def close_rpc(self):
         """Chiude la connessione RPC."""

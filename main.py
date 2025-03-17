@@ -20,7 +20,7 @@ global discord
 while True:
     openedBefore, _ = checkOneNote(openedBefore)
     if not openedBefore:
-        time.sleep(1)
+        time.sleep(30)
         continue
     cartella = getCartella(data_dir)
     file = getFile(cache_dir)
@@ -31,4 +31,4 @@ while True:
             state='/'.join(cartella[:-1]),
             details='Scrivendo ' + cartella[-1],
         )
-    time.sleep(1)
+    time.sleep(30)
