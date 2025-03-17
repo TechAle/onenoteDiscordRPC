@@ -1,4 +1,5 @@
 import os
+import subprocess
 from pathlib import Path
 
 from discordRPC import closeDiscord, openDiscord
@@ -37,10 +38,14 @@ def getFiles(extension, directory, sortDate=False):
     return max(files, key=lambda x: x.stat().st_mtime) if sortDate else files
 
 def processExists(name="OneNote.app") -> bool:
-    for process in os.popen('ps aux'):
-        if process.__contains__(name):
-            return True
+    # Esegui il comando 'ps aux' e cattura l'output
+    result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
+
+    # Cerca il nome del processo nell'output
+    if name in result.stdout:
+        return True
     return False
+
 
 def checkOneNote(openedBefore):
     if not processExists():

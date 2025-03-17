@@ -27,7 +27,6 @@ while True:
     if file != lastFile:
         cartella = getPath(cartella, file, dom_dir)
         lastFile = file
-        print(f"Cartella: {cartella}")
         DiscordRPC.discord.modify_presence(
             state='/'.join(cartella[:-1]),
             details='Scrivendo ' + cartella[-1],
